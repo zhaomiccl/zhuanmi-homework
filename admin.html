@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>后台管理 - 着迷国庆作业</title>
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260930a">
+</head>
+<body>
+  <div class="app">
+    <!-- 密码入口 -->
+    <div id="pwdGate" class="pwd-gate">
+      <div class="pwd-box">
+        <div class="pwd-title">后台管理</div>
+        <input type="password" id="pwdInput" placeholder="请输入密码" autocomplete="off">
+        <button id="pwdBtn">进入</button>
+        <p class="pwd-tip" id="pwdTip"></p>
+      </div>
+    </div>
+
+    <!-- 管理面板 -->
+    <div id="adminPanel" style="display:none;">
+      <div class="admin-head">
+        <div class="admin-title">题目编辑</div>
+        <a class="back-link" href="index.html">← 返回试卷</a>
+      </div>
+
+      <div class="admin-form" id="adminForm">
+        <div class="field">
+          <label>试卷标题</label>
+          <input type="text" id="setTitle" maxlength="20">
+        </div>
+        <div class="field">
+          <label>试卷副标题</label>
+          <input type="text" id="setSub" maxlength="20">
+        </div>
+        <div class="field">
+          <label>第 1 题</label>
+          <input type="text" id="q0" maxlength="60">
+        </div>
+        <div class="field">
+          <label>第 2 题</label>
+          <input type="text" id="q1" maxlength="60">
+        </div>
+        <div class="field">
+          <label>第 3 题</label>
+          <input type="text" id="q2" maxlength="60">
+        </div>
+        <div class="field">
+          <label>第 4 题</label>
+          <input type="text" id="q3" maxlength="60">
+        </div>
+        <div class="field">
+          <label>第 5 题</label>
+          <input type="text" id="q4" maxlength="60">
+        </div>
+        <div class="field">
+          <label>完成按钮文字</label>
+          <input type="text" id="setFinish" maxlength="10">
+        </div>
+        <button class="btn-save" id="saveBtn">💾 保存</button>
+        <p class="admin-tip" id="saveTip"></p>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <style>
+    .pwd-gate { display:flex; align-items:center; justify-content:center; min-height:80vh; }
+    .pwd-box {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 12px;
+      padding: 28px 24px;
+      width: 86%; max-width: 320px;
+      text-align:center;
+    }
+    .pwd-title { color:#ffd700; font-size:1.4em; margin-bottom:16px; letter-spacing:3px; }
+    .pwd-box input {
+      width:100%; padding:12px; border-radius:8px;
+      border:1px solid rgba(255,215,0,0.3);
+      background: rgba(0,0,0,0.3); color:#fff;
+      font-size:1em; margin-bottom:12px;
+    }
+    .pwd-box button {
+      width:100%; padding:12px; border:none; border-radius:8px;
+      background: linear-gradient(90deg,#c41e3a,#8b0000);
+      color:#ffd700; font-size:1em; cursor:pointer; letter-spacing:3px;
+    }
+    .pwd-tip { color: rgba(255,100,100,0.9); font-size:0.85em; margin-top:10px; min-height:18px; }
+
+    .admin-head { display:flex; justify-content:space-between; align-items:center; margin: 8px 0 16px; }
+    .admin-title { color:#ffd700; font-size:1.3em; letter-spacing:3px; }
+    .back-link { color:rgba(255,255,255,0.7); font-size:0.9em; text-decoration:none; }
+    .admin-form {
+      background: rgba(255,255,255,0.06);
+      border-radius:12px; padding:16px;
+      border:1px solid rgba(255,215,0,0.2);
+    }
+    .admin-form .field { margin-bottom:12px; }
+    .admin-form input {
+      width:100%; padding:10px 12px; border-radius:8px;
+      border:1px solid rgba(255,215,0,0.3);
+      background: rgba(0,0,0,0.3); color:#fff;
+      font-size:1em; font-family:inherit;
+    }
+    .btn-save {
+      width:100%; padding:14px; border:none; border-radius:10px;
+      background: linear-gradient(90deg,#c41e3a,#8b0000);
+      color:#ffd700; font-size:1.1em; cursor:pointer; letter-spacing:4px;
+      margin-top:6px;
+    }
+    .admin-tip { text-align:center; font-size:0.85em; margin-top:10px; min-height:18px; color: rgba(100,255,100,0.9); }
+  </style>
+  <script src="admin.js?v=20260930a"></script>
+</body>
+</html>
