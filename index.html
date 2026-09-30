@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>着迷国庆作业</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260930a">
+</head>
+<body>
+  <div class="app">
+    <div class="loading" id="loading">加载中...</div>
+
+    <div id="content" style="display:none;">
+      <div class="toolbar">
+        <div class="toolbar-title" id="topTitle">着迷国庆作业</div>
+      </div>
+
+      <!-- 试卷预览区（最终截图对象） -->
+      <div class="paper" id="paper">
+        <div class="paper-banner">
+          <div class="paper-title" id="paperTitle">着迷试卷</div>
+          <div class="paper-sub" id="paperSub">国庆作业</div>
+          <div class="paper-deco">★ ◆ ★</div>
+        </div>
+
+        <div class="paper-row">
+          <span class="paper-label">答题人：</span>
+          <span class="paper-name" id="paperName">（请填写马甲）</span>
+        </div>
+
+        <div class="paper-body" id="paperBody">
+          <!-- 5 个题目块由 JS 渲染 -->
+        </div>
+
+        <div class="paper-footer">
+          <div class="paper-finish" id="paperFinish">答题完成</div>
+          <div class="paper-stamp">着迷温馨小店 · 出品</div>
+        </div>
+      </div>
+
+      <!-- 编辑区（不进截图） -->
+      <div class="editor">
+        <div class="editor-title">编辑你的作业</div>
+
+        <div class="field">
+          <label>马甲昵称</label>
+          <input type="text" id="inputName" placeholder="输入你的马甲昵称" maxlength="16">
+        </div>
+
+        <div id="answerList"><!-- 5 个答题上传区 --></div>
+
+        <button class="btn-generate" id="btnGenerate">📝 生成试卷图片</button>
+        <p class="tip">生成后长按图片可保存到手机相册</p>
+      </div>
+
+      <button class="admin-fab" id="adminFab" title="后台">⚙</button>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div class="modal" id="modal">
+      <button class="modal-close" id="modalClose">×</button>
+      <img id="resultImg" alt="试卷">
+      <p class="modal-hint">长按图片可保存到手机相册</p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="html2canvas.min.js?v=20260930a"></script>
+  <script src="app.js?v=20260930a"></script>
+</body>
+</html>
