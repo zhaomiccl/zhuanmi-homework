@@ -69,7 +69,11 @@ function escapeHtml(s) {
 }
 
 // ========== 编辑区（上传图片贴图） ==========
-const answerImages = [null, null, null, null, null]; // base64
+// 每项为 { src, w, h } 或 null
+const answerImages = [null, null, null, null, null];
+
+// 3:4 宽高比阈值：原图 宽/高 > 0.75 时裁到 3:4，否则保留原比例
+const RATIO_LIMIT = 3 / 4;
 
 function renderAnswerList() {
   const list = document.getElementById('answerList');
@@ -84,7 +88,7 @@ function renderAnswerList() {
       </div>
       <label class="answer-upload${answerImages[i] ? ' has-img' : ''}" data-i="${i}">
         ${answerImages[i]
-          ? `<img src="${answerImages[i]}" alt="答题图">`
+          ? `<img src="${answerImages[i].src}" alt="答题图">`
           : `📷 点击上传答题图片`}
         <input type="file" accept="image/*" data-i="${i}">
       </label>
@@ -115,21 +119,39 @@ function onFileChange(e) {
   }
   const reader = new FileReader();
   reader.onload = ev => {
-    answerImages[i] = ev.target.result;
-    updateAnswerPreview(i);
-    renderAnswerList();
+    const src = ev.target.result;
+    // 读取图片自然尺寸，用于判断宽高比
+    const probe = new Image();
+    probe.onload = () => {
+      answerImages[i] = { src, w: probe.naturalWidth, h: probe.naturalHeight };
+      updateAnswerPreview(i);
+      renderAnswerList();
+    };
+    probe.onerror = () => showToast('图片读取失败');
+    probe.src = src;
   };
   reader.onerror = () => showToast('图片读取失败');
   reader.readAsDataURL(file);
 }
 
 // 把上传的图同步到试卷预览区
+// 规则：宽/高 > 3:4 时裁到 3:4（避免横图留大量空白），否则保留原图比例
 function updateAnswerPreview(i) {
   const cell = document.getElementById('pqa' + i);
   if (!cell) return;
-  cell.innerHTML = answerImages[i]
-    ? `<img src="${answerImages[i]}" alt="答题">`
-    : `<span class="placeholder">答题区</span>`;
+  const img = answerImages[i];
+  if (!img) {
+    cell.innerHTML = `<span class="placeholder">答题区</span>`;
+    return;
+  }
+  const ratio = img.w / img.h;
+  if (ratio > RATIO_LIMIT) {
+    // 横图（宽高比 > 3:4）：用 3:4 容器裁切，避免上下留大量空白
+    cell.innerHTML = `<img src="${img.src}" alt="答题" class="ans-capped">`;
+  } else {
+    // 竖图/接近方图：保留原图比例，完整显示
+    cell.innerHTML = `<img src="${img.src}" alt="答题" style="width:100%;height:100%;object-fit:contain;">`;
+  }
 }
 
 // ========== 马甲同步 ==========
