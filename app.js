@@ -69,11 +69,8 @@ function escapeHtml(s) {
 }
 
 // ========== 编辑区（上传图片贴图） ==========
-// 每项为 { src, w, h } 或 null
+// 每项为 base64 字符串或 null（图片保持原始比例，不裁切）
 const answerImages = [null, null, null, null, null];
-
-// 3:4 宽高比阈值：原图 宽/高 > 0.75 时裁到 3:4，否则保留原比例
-const RATIO_LIMIT = 3 / 4;
 
 function renderAnswerList() {
   const list = document.getElementById('answerList');
@@ -88,7 +85,7 @@ function renderAnswerList() {
       </div>
       <label class="answer-upload${answerImages[i] ? ' has-img' : ''}" data-i="${i}">
         ${answerImages[i]
-          ? `<img src="${answerImages[i].src}" alt="答题图">`
+          ? `<img src="${answerImages[i]}" alt="答题图">`
           : `📷 点击上传答题图片`}
         <input type="file" accept="image/*" data-i="${i}">
       </label>
@@ -119,39 +116,21 @@ function onFileChange(e) {
   }
   const reader = new FileReader();
   reader.onload = ev => {
-    const src = ev.target.result;
-    // 读取图片自然尺寸，用于判断宽高比
-    const probe = new Image();
-    probe.onload = () => {
-      answerImages[i] = { src, w: probe.naturalWidth, h: probe.naturalHeight };
-      updateAnswerPreview(i);
-      renderAnswerList();
-    };
-    probe.onerror = () => showToast('图片读取失败');
-    probe.src = src;
+    answerImages[i] = ev.target.result;
+    updateAnswerPreview(i);
+    renderAnswerList();
   };
   reader.onerror = () => showToast('图片读取失败');
   reader.readAsDataURL(file);
 }
 
-// 把上传的图同步到试卷预览区
-// 规则：宽/高 > 3:4 时裁到 3:4（避免横图留大量空白），否则保留原图比例
+// 把上传的图同步到试卷预览区（保持图片原始比例，不裁切不变形）
 function updateAnswerPreview(i) {
   const cell = document.getElementById('pqa' + i);
   if (!cell) return;
-  const img = answerImages[i];
-  if (!img) {
-    cell.innerHTML = `<span class="placeholder">答题区</span>`;
-    return;
-  }
-  const ratio = img.w / img.h;
-  if (ratio > RATIO_LIMIT) {
-    // 横图（宽高比 > 3:4）：用 3:4 容器裁切，避免上下留大量空白
-    cell.innerHTML = `<img src="${img.src}" alt="答题" class="ans-capped">`;
-  } else {
-    // 竖图/接近方图：保留原图比例，完整显示
-    cell.innerHTML = `<img src="${img.src}" alt="答题" style="width:100%;height:100%;object-fit:contain;">`;
-  }
+  cell.innerHTML = answerImages[i]
+    ? `<img src="${answerImages[i]}" alt="答题" style="max-width:100%;max-height:100%;object-fit:contain;">`
+    : `<span class="placeholder">答题区</span>`;
 }
 
 // ========== 马甲同步 ==========
@@ -176,6 +155,10 @@ async function handleGenerate() {
   }
 
   syncName();
+  const btn = document.getElementById('btnGenerate');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '生成中...';
   showToast('正在生成试卷图片...');
 
   const paper = document.getElementById('paper');
@@ -191,10 +174,14 @@ async function handleGenerate() {
     const img = document.getElementById('resultImg');
     img.src = dataUrl;
     document.getElementById('modal').classList.add('show');
+    showToast('生成成功，长按图片可保存');
   } catch (e) {
     console.error('[paper] html2canvas failed:', e);
     const reason = (e && (e.message || e.name)) ? (e.name + ': ' + e.message) : '未知错误';
     showToast('生成失败：' + reason);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 }
 
