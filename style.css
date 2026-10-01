@@ -135,15 +135,6 @@ body {
   width: 100%; height: 100%;
   object-fit: contain;
 }
-/* 横图（宽高比 > 3:4）：约束为 3:4 比例并裁切居中，避免上下留大量空白 */
-.q-answer img.ans-capped {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-}
 .q-answer .placeholder {
   color: rgba(0,0,0,0.25);
   font-size: 0.8em;
