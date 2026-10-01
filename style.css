@@ -306,6 +306,12 @@ body {
   max-height: 78vh;
   border-radius: 8px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  /* 确保移动端长按可弹出系统保存菜单 */
+  -webkit-touch-callout: default;
+  touch-callout: default;
+  user-select: auto;
+  -webkit-user-select: auto;
+  pointer-events: auto;
 }
 .modal-hint {
   margin-top: 12px;
