@@ -124,12 +124,12 @@ function onFileChange(e) {
   reader.readAsDataURL(file);
 }
 
-// 把上传的图同步到试卷预览区（保持图片原始比例，不裁切不变形）
+// 把上传的图同步到试卷预览区（图片自然比例，宽度填满，高度自适应）
 function updateAnswerPreview(i) {
   const cell = document.getElementById('pqa' + i);
   if (!cell) return;
   cell.innerHTML = answerImages[i]
-    ? `<img src="${answerImages[i]}" alt="答题" style="width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;">`
+    ? `<img src="${answerImages[i]}" alt="答题" style="width:100%;height:auto;display:block;">`
     : `<span class="placeholder">答题区</span>`;
 }
 
@@ -137,6 +137,22 @@ function updateAnswerPreview(i) {
 function syncName() {
   const v = document.getElementById('inputName').value.trim();
   document.getElementById('paperName').textContent = v || '（请填写马甲）';
+}
+
+// 等待试卷内所有图片加载完成（最多等 3 秒，避免挂起）
+function waitForImages(container) {
+  const imgs = container.querySelectorAll('img');
+  if (imgs.length === 0) return Promise.resolve();
+  return Promise.all(Array.from(imgs).map(img =>
+    new Promise(resolve => {
+      // 已完成加载（无论成败）直接 resolve
+      if (img.complete) { resolve(); return; }
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      // 安全兜底：3 秒后强制 resolve，防止个别图片卡死整个流程
+      setTimeout(resolve, 3000);
+    })
+  ));
 }
 
 // ========== 生成试卷图片 ==========
@@ -163,13 +179,27 @@ async function handleGenerate() {
 
   const paper = document.getElementById('paper');
 
+  // 超时保护：避免 html2canvas 卡死导致按钮一直"生成中"
+  const timeoutMs = 20000;
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('生成超时，请重试')), timeoutMs)
+  );
+
   try {
-    const canvas = await html2canvas(paper, {
-      backgroundColor: '#fdfaf0',
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
+    // 先等图片加载完
+    await waitForImages(paper);
+    // 给浏览器一点时间完成布局（用 setTimeout 而非 rAF，避免后台标签页 rAF 不触发）
+    await new Promise(r => setTimeout(r, 50));
+
+    const canvas = await Promise.race([
+      html2canvas(paper, {
+        backgroundColor: '#fdfaf0',
+        scale: 2,
+        useCORS: true,
+        logging: false
+      }),
+      timeoutPromise
+    ]);
     const dataUrl = canvas.toDataURL('image/png');
     const img = document.getElementById('resultImg');
     img.src = dataUrl;
