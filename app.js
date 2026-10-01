@@ -129,7 +129,7 @@ function updateAnswerPreview(i) {
   const cell = document.getElementById('pqa' + i);
   if (!cell) return;
   cell.innerHTML = answerImages[i]
-    ? `<img src="${answerImages[i]}" alt="答题" style="max-width:100%;max-height:100%;object-fit:contain;">`
+    ? `<img src="${answerImages[i]}" alt="答题" style="width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;">`
     : `<span class="placeholder">答题区</span>`;
 }
 
