@@ -106,22 +106,63 @@ function renderAnswerList() {
   });
 }
 
+// 处理上传图片：用 canvas 缩放压缩，避免大文件 base64 导致内存不足
+function processImageFile(file, callback) {
+  // 校验类型
+  if (!file.type || !file.type.startsWith('image/')) {
+    showToast('请选择图片文件');
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    try {
+      // 最大边长限制，避免过大
+      const MAX = 1600;
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > MAX || h > MAX) {
+        if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // 输出 JPEG，质量 0.85，体积小且兼容性好
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      URL.revokeObjectURL(url);
+      callback(dataUrl);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      console.error('canvas 处理失败:', e);
+      showToast('图片处理失败，请换一张试试');
+    }
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    // HEIC 等不支持的格式会走到这里
+    showToast('图片格式不支持，请用 JPG/PNG 格式');
+  };
+  img.src = url;
+}
+
 function onFileChange(e) {
   const i = +e.target.dataset.i;
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-  if (file.size > 6 * 1024 * 1024) {
-    showToast('图片过大，请压缩到 6MB 以内');
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('图片过大，请压缩到 10MB 以内');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = ev => {
-    answerImages[i] = ev.target.result;
+  processImageFile(file, dataUrl => {
+    answerImages[i] = dataUrl;
     updateAnswerPreview(i);
     renderAnswerList();
-  };
-  reader.onerror = () => showToast('图片读取失败');
-  reader.readAsDataURL(file);
+  });
+  // 清空 input，允许重复选择同一文件
+  e.target.value = '';
 }
 
 // 把上传的图同步到试卷预览区（图片自然比例，宽度填满，高度自适应）
