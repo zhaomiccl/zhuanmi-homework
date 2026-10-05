@@ -87,7 +87,7 @@ function renderAnswerList() {
         ${answerImages[i]
           ? `<img src="${answerImages[i]}" alt="答题图" style="pointer-events:none;">`
           : `📷 点击上传答题图片`}
-        <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/*" data-i="${i}" style="display:none;">
+        <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif,image/*" data-i="${i}" style="display:none;">
       </div>
     `;
     list.appendChild(item);
@@ -114,27 +114,66 @@ function renderAnswerList() {
   });
 }
 
+// 判断是否为图片文件（兼容 iOS 上 file.type 为空的情况）
+function isImageFile(file) {
+  if (file.type && file.type.startsWith('image/')) return true;
+  // iOS 选照片时 file.type 可能为空，按后缀判断
+  const name = (file.name || '').toLowerCase();
+  return /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/.test(name);
+}
+
+// 判断是否为 HEIC 格式
+function isHeicFile(file) {
+  const t = (file.type || '').toLowerCase();
+  if (t === 'image/heic' || t === 'image/heif') return true;
+  return /\.(heic|heif)$/.test((file.name || '').toLowerCase());
+}
+
 // 处理上传图片：优先用 canvas 缩放压缩，失败时回退 FileReader，多层兜底
 function processImageFile(file, callback) {
-  // 校验类型
-  if (!file.type || !file.type.startsWith('image/')) {
+  // 校验类型（兼容 iOS 空 type）
+  if (!isImageFile(file)) {
     showToast('请选择图片文件');
     return;
   }
 
   showToast('正在处理图片...');
 
+  const isHeic = isHeicFile(file);
+
+  // 最终兜底：尝试把 dataUrl 转成可渲染的 JPEG
+  function finalizeDataUrl(dataUrl) {
+    if (!dataUrl || dataUrl.length < 100) {
+      showToast('图片读取失败，请换一张试试');
+      return;
+    }
+    // 如果是 HEIC 的 data URL，浏览器无法直接渲染，需用 canvas 转换
+    if (dataUrl.startsWith('data:image/heic')) {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          canvas.getContext('2d').drawImage(img, 0, 0);
+          callback(canvas.toDataURL('image/jpeg', 0.85));
+        } catch (e) {
+          showToast('HEIC 格式暂不支持，请用 JPG/PNG 格式');
+        }
+      };
+      img.onerror = () => showToast('HEIC 格式暂不支持，请用 JPG/PNG 格式');
+      img.src = dataUrl;
+      return;
+    }
+    callback(dataUrl);
+  }
+
   // 方案二兜底：直接 FileReader 读取
   function fallbackFileReader() {
     try {
       const reader = new FileReader();
       reader.onload = ev => {
-        const result = ev.target && ev.target.result;
-        if (result && result.length > 100) {
-          callback(result);
-        } else {
-          showToast('图片读取失败，请换一张试试');
-        }
+        finalizeDataUrl(ev.target && ev.target.result);
       };
       reader.onerror = () => showToast('图片读取失败，请换一张试试');
       reader.readAsDataURL(file);
@@ -144,7 +183,7 @@ function processImageFile(file, callback) {
     }
   }
 
-  // 方案一：canvas 缩放压缩
+  // 方案一：canvas 缩放压缩（iOS Safari 可解码 HEIC 并重编码为 JPEG）
   try {
     const URLObj = window.URL || window.webkitURL;
     if (!URLObj || !URLObj.createObjectURL) { fallbackFileReader(); return; }
@@ -190,7 +229,7 @@ function processImageFile(file, callback) {
       if (done) return;
       done = true;
       cleanup();
-      // HEIC 等浏览器不支持解码的格式，回退 FileReader 试试
+      // HEIC 等浏览器不支持解码的格式，回退 FileReader 再尝试转换
       fallbackFileReader();
     };
 
