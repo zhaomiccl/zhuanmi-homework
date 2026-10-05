@@ -83,12 +83,12 @@ function renderAnswerList() {
         <div class="q-text">${i + 1}. ${escapeHtml(currentData.questions[i] || '')}</div>
         ${answerImages[i] ? `<button class="answer-clear" data-i="${i}">清除</button>` : ''}
       </div>
-      <label class="answer-upload${answerImages[i] ? ' has-img' : ''}" data-i="${i}">
+      <div class="answer-upload${answerImages[i] ? ' has-img' : ''}" data-i="${i}">
         ${answerImages[i]
-          ? `<img src="${answerImages[i]}" alt="答题图">`
+          ? `<img src="${answerImages[i]}" alt="答题图" style="pointer-events:none;">`
           : `📷 点击上传答题图片`}
-        <input type="file" accept="image/*" data-i="${i}">
-      </label>
+        <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/*" data-i="${i}" style="display:none;">
+      </div>
     `;
     list.appendChild(item);
   }
@@ -96,8 +96,16 @@ function renderAnswerList() {
   list.querySelectorAll('input[type=file]').forEach(inp => {
     inp.addEventListener('change', onFileChange);
   });
+  // 点击上传区触发文件选择（兼容所有手机浏览器）
+  list.querySelectorAll('.answer-upload').forEach(label => {
+    label.addEventListener('click', e => {
+      const inp = label.querySelector('input[type=file]');
+      if (inp) inp.click();
+    });
+  });
   list.querySelectorAll('.answer-clear').forEach(btn => {
     btn.addEventListener('click', e => {
+      e.stopPropagation();
       const i = +e.currentTarget.dataset.i;
       answerImages[i] = null;
       updateAnswerPreview(i);
@@ -106,46 +114,100 @@ function renderAnswerList() {
   });
 }
 
-// 处理上传图片：用 canvas 缩放压缩，避免大文件 base64 导致内存不足
+// 处理上传图片：优先用 canvas 缩放压缩，失败时回退 FileReader，多层兜底
 function processImageFile(file, callback) {
   // 校验类型
   if (!file.type || !file.type.startsWith('image/')) {
     showToast('请选择图片文件');
     return;
   }
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
+
+  showToast('正在处理图片...');
+
+  // 方案二兜底：直接 FileReader 读取
+  function fallbackFileReader() {
     try {
-      // 最大边长限制，避免过大
-      const MAX = 1600;
-      let w = img.naturalWidth;
-      let h = img.naturalHeight;
-      if (w > MAX || h > MAX) {
-        if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
-        else { w = Math.round(w * MAX / h); h = MAX; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      // 输出 JPEG，质量 0.85，体积小且兼容性好
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      URL.revokeObjectURL(url);
-      callback(dataUrl);
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const result = ev.target && ev.target.result;
+        if (result && result.length > 100) {
+          callback(result);
+        } else {
+          showToast('图片读取失败，请换一张试试');
+        }
+      };
+      reader.onerror = () => showToast('图片读取失败，请换一张试试');
+      reader.readAsDataURL(file);
     } catch (e) {
-      URL.revokeObjectURL(url);
-      console.error('canvas 处理失败:', e);
-      showToast('图片处理失败，请换一张试试');
+      console.error('FileReader 失败:', e);
+      showToast('图片读取失败，请换一张试试');
     }
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    // HEIC 等不支持的格式会走到这里
-    showToast('图片格式不支持，请用 JPG/PNG 格式');
-  };
-  img.src = url;
+  }
+
+  // 方案一：canvas 缩放压缩
+  try {
+    const URLObj = window.URL || window.webkitURL;
+    if (!URLObj || !URLObj.createObjectURL) { fallbackFileReader(); return; }
+
+    const url = URLObj.createObjectURL(file);
+    const img = new Image();
+    let done = false;
+
+    const cleanup = () => { try { URLObj.revokeObjectURL(url); } catch (e) {} };
+
+    img.onload = () => {
+      if (done) return;
+      done = true;
+      try {
+        const MAX = 1280;
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (!w || !h) { cleanup(); fallbackFileReader(); return; }
+        if (w > MAX || h > MAX) {
+          if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        cleanup();
+        if (dataUrl && dataUrl.length > 100) {
+          callback(dataUrl);
+        } else {
+          fallbackFileReader();
+        }
+      } catch (e) {
+        cleanup();
+        console.error('canvas 处理失败，回退 FileReader:', e);
+        fallbackFileReader();
+      }
+    };
+
+    img.onerror = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      // HEIC 等浏览器不支持解码的格式，回退 FileReader 试试
+      fallbackFileReader();
+    };
+
+    // 超时兜底：8 秒还没加载完，回退 FileReader
+    setTimeout(() => {
+      if (!done) {
+        done = true;
+        cleanup();
+        fallbackFileReader();
+      }
+    }, 8000);
+
+    img.src = url;
+  } catch (e) {
+    console.error('createObjectURL 失败，回退 FileReader:', e);
+    fallbackFileReader();
+  }
 }
 
 function onFileChange(e) {
